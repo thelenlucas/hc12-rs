@@ -11,5 +11,4 @@ heapless = { version = "0.8.0", features = ["defmt-03"] }
 seq-macro = "0.3.5"
 
 [dev-dependencies]
-# Lets us mock the HAL for testing
 embedded-hal-mock = {version = "0.11.1", features = ["eh1"]}

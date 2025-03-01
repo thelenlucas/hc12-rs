@@ -20,7 +20,7 @@ pub mod baudrates;
 pub mod configuration;
 pub mod device;
 pub mod modes;
-mod programming;
+pub mod programming;
 
 mod sealed {
     pub trait Sealed {}
