@@ -22,6 +22,8 @@ pub mod device;
 pub mod modes;
 pub mod programming;
 
+pub use programming::ProgrammingResouces;
+
 mod sealed {
     pub trait Sealed {}
 }
