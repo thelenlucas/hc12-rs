@@ -1,4 +1,7 @@
-use crate::{commands::Command, speeds::ValidSpeed};
+use crate::{
+    commands::Command,
+    speeds::{ValidSpeed, B1200, B2400, B4800},
+};
 
 /// A valid Mode for the HC12
 pub trait ValidMode: Default + Command {}
@@ -45,4 +48,11 @@ impl Command for Fu4 {
     }
 }
 
+impl<T: ValidSpeed> ValidModeFor<T> for Fu1 {}
 impl<T: ValidSpeed> ValidModeFor<T> for Fu3 {}
+
+impl ValidModeFor<B1200> for Fu2 {}
+impl ValidModeFor<B2400> for Fu2 {}
+impl ValidModeFor<B4800> for Fu2 {}
+
+impl ValidModeFor<B1200> for Fu4 {}

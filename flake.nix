@@ -20,6 +20,7 @@
               cargo
               rustc
               rustfmt
+              marksman
               rustPackages.clippy
               rust-analyzer
               cargo-machete

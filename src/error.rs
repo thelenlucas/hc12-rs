@@ -4,9 +4,11 @@ use crate::paramaters::BadChannel;
 
 /// An error in creating a device, for some internal or an underlying issue
 #[derive(Debug)]
-pub enum Error<D: core::fmt::Debug> {
+pub enum Error<D: core::fmt::Debug, E: core::fmt::Debug> {
     /// Underlying device error
-    Device(D),
+    SerialDevice(D),
+    /// Underling pin error
+    PinError(E),
     /// An invalid channel was selected
     BadChannel(u8),
     /// No response was recieved
@@ -15,13 +17,13 @@ pub enum Error<D: core::fmt::Debug> {
     NoOk(String<16>),
 }
 
-impl<D: embedded_io::Error> From<D> for Error<D> {
+impl<D: embedded_io::Error, E: core::fmt::Debug> From<D> for Error<D, E> {
     fn from(value: D) -> Self {
-        Error::Device(value)
+        Error::SerialDevice(value)
     }
 }
 
-impl<D: core::fmt::Debug> From<BadChannel> for Error<D> {
+impl<D: core::fmt::Debug, E: core::fmt::Debug> From<BadChannel> for Error<D, E> {
     fn from(value: BadChannel) -> Self {
         Self::BadChannel(value.into())
     }

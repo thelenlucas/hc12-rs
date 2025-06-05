@@ -1,6 +1,6 @@
 use core::str::from_utf8;
 
-use embedded_hal::delay::DelayNs;
+use embedded_hal::{delay::DelayNs, digital::OutputPin};
 use embedded_io::{Read, ReadReady, Write};
 use heapless::String;
 
@@ -10,11 +10,11 @@ pub trait Command {
     fn command(&self) -> String<16>;
 }
 
-pub fn run_command<D: Read + Write + ReadReady>(
+pub fn run_command<D: Read + Write + ReadReady, P: OutputPin>(
     device: &mut D,
     command: impl Command,
     delay: &mut impl DelayNs,
-) -> Result<(), Error<D::Error>> {
+) -> Result<(), Error<D::Error, P::Error>> {
     device.write_all(command.command().as_bytes())?;
     device.write_all("\r\n".as_bytes())?;
     delay.delay_ms(40);
