@@ -16,6 +16,7 @@ pub fn run_command<D: Read + Write + ReadReady>(
     delay: &mut impl DelayNs,
 ) -> Result<(), Error<D::Error>> {
     device.write_all(command.command().as_bytes())?;
+    device.write_all("\r\n".as_bytes())?;
     delay.delay_ms(40);
 
     if !device.read_ready()? {

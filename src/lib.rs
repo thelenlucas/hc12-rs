@@ -118,6 +118,8 @@ where
         run_command(&mut self.device, self.power, delay)?;
         run_command(&mut self.device, self.channel, delay)?;
 
+        delay.delay_ms(80);
+
         Ok(ProgrammedHC12::new(self.device, self.programming_pin))
     }
 }
