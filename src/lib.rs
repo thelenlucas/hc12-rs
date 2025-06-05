@@ -1,29 +1,152 @@
-//! # `hc12-rs`
-//!
-//! A strongly-typed `#[no_std]` driver for the hc01 hc-12 radio module.
-//!
-//! This crate takes a few departures from a typical `embedded-hal` or `embedded-io` driver, due to some shortcomings with the way the way the two crates handle UART devices. The HC-12 is highly dependent on the speed of the underlying UART, as it has different speeds, and modes can be configurable for multiple speeds. Unfortunately, neither `embedded-hal` nor `embedded-io` provide a way to set the speed of the underlying UART, so this driver provides additional functionality to configure the device.
-//!
-//! ## Model
-//! `hc12-rs` models the HC-12 as a collection of:
-//! 1. The underlying UART `embedded-io` device, used to send and receive data
-//! 2. An [OutputPin](https://docs.rs/embedded-hal/1.0.0/embedded_hal/digital/trait.OutputPin.html), used to move into and out of AT mode
-//! 3. A [DelayNs](https://docs.rs/embedded-hal/latest/embedded_hal/delay/trait.DelayNs.html) device, used to provide a delay for the programming pin
-//!
-//! The device may be initialized without a programming pin or delay, but will do so only into one of the transparent modes, and will not be able to transition out of them.
-//! Note that due to the OutputPin's traits, the transition between modes can fail. When setup fails, the underyling UART and programming resources are returned, so the user can handle the error.
+#![no_std]
 
-// Only do no_std when test isn't enabled
-#![cfg_attr(not(test), no_std)]
-
-pub mod baudrates;
-pub mod configuration;
-pub mod device;
+mod commands;
+pub mod error;
 pub mod modes;
-pub mod programming;
+pub mod paramaters;
+pub mod speeds;
 
-pub use programming::ProgrammingResouces;
+use commands::run_command;
+use embedded_hal::{delay::DelayNs, digital::OutputPin};
+use embedded_io::{Read, ReadReady, Write};
+pub use error::*;
 
-mod sealed {
-    pub trait Sealed {}
+use modes::*;
+use paramaters::{Channel, Power};
+use speeds::*;
+
+/// An HC-12 device builder
+pub struct HC12<Device, Pin, Mode, Speed> {
+    device: Device,
+    programming_pin: Pin,
+    mode: Mode,
+    speed: Speed,
+    channel: Channel,
+    power: Power,
+}
+
+impl<Device, Pin> HC12<Device, Pin, Fu3, B9600>
+where
+    Device: Read + Write,
+    Pin: OutputPin,
+{
+    /// Create a new builder in programming mode
+    pub fn new(
+        device: Device,
+        programming_pin: Pin,
+        delay: &mut impl DelayNs,
+    ) -> Result<Self, Error<Pin::Error>>
+    where
+        <Pin as embedded_hal::digital::ErrorType>::Error: embedded_io::Error,
+    {
+        let mut programming_pin = programming_pin;
+        delay.delay_ms(40);
+        programming_pin.set_low()?;
+        Ok(Self {
+            device,
+            programming_pin,
+            mode: Fu3::default(),
+            speed: B9600::default(),
+            channel: Channel::default(),
+            power: Power::default(),
+        })
+    }
+}
+
+impl<Device, Pin, Mode, Speed> HC12<Device, Pin, Mode, Speed> {
+    /// Set the power
+    pub fn power(self, power: Power) -> Self {
+        let mut s = self;
+        s.power = power;
+        s
+    }
+
+    /// Set the channel
+    pub fn channel(self, channel: Channel) -> Self {
+        let mut s = self;
+        s.channel = channel;
+        s
+    }
+
+    /// Set the mode
+    pub fn mode<NewMode>(self, mode: NewMode) -> HC12<Device, Pin, NewMode, Speed>
+    where
+        Speed: ValidSpeed,
+        NewMode: ValidModeFor<Speed>,
+    {
+        HC12::<Device, Pin, NewMode, Speed> {
+            device: self.device,
+            programming_pin: self.programming_pin,
+            mode,
+            speed: self.speed,
+            channel: self.channel,
+            power: self.power,
+        }
+    }
+
+    /// Set the speed
+    pub fn speed<NewSpeed>(self, speed: NewSpeed) -> HC12<Device, Pin, Mode, NewSpeed>
+    where
+        NewSpeed: ValidSpeed,
+        Mode: ValidModeFor<NewSpeed>,
+    {
+        HC12::<Device, Pin, Mode, NewSpeed> {
+            device: self.device,
+            programming_pin: self.programming_pin,
+            mode: self.mode,
+            speed,
+            channel: self.channel,
+            power: self.power,
+        }
+    }
+}
+
+impl<Device, Pin, Mode, Speed> HC12<Device, Pin, Mode, Speed>
+where
+    Device: Read + Write + ReadReady,
+    Pin: OutputPin,
+    Mode: ValidMode + ValidModeFor<Speed>,
+    Speed: ValidSpeed,
+{
+    /// Program the HC12
+    pub fn program(
+        mut self,
+        delay: &mut impl DelayNs,
+    ) -> Result<ProgrammedHC12<Device, Pin>, Error<Device::Error>> {
+        run_command(&mut self.device, Speed::default(), delay)?;
+        run_command(&mut self.device, Mode::default(), delay)?;
+        run_command(&mut self.device, self.power, delay)?;
+        run_command(&mut self.device, self.channel, delay)?;
+
+        Ok(ProgrammedHC12::new(self.device, self.programming_pin))
+    }
+}
+
+pub struct ProgrammedHC12<Device, Pin> {
+    device: Device,
+    pin: Pin,
+}
+
+impl<Device, Pin> ProgrammedHC12<Device, Pin> {
+    pub(crate) fn new(device: Device, pin: Pin) -> Self {
+        Self { device, pin }
+    }
+
+    pub(crate) fn inner(self) -> (Device, Pin) {
+        (self.device, self.pin)
+    }
+
+    #[allow(clippy::type_complexity)]
+    pub fn at_mode(mut self) -> Result<(Device, Pin), Error<Pin::Error>>
+    where
+        Pin: OutputPin,
+        <Pin as embedded_hal::digital::ErrorType>::Error: embedded_io::Error,
+    {
+        let res = self.pin.set_high();
+
+        match res {
+            Ok(()) => Ok(self.inner()),
+            Err(e) => Err(e.into()),
+        }
+    }
 }
