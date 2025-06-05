@@ -1,5 +1,7 @@
 [package]
 name = "hc12-rs"
+license = "MIT"
+description = "A strongly typed, and rusty builder for programming HC-12 radios"
 version = "0.3.0"
 edition = "2021"
 
