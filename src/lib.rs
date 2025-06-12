@@ -29,7 +29,7 @@ use speeds::*;
 ///   .unwrap()
 ///   .channel(Channel::new(15).unwrap())
 ///   .power(Power::P8)
-///   .b4800
+///   .b4800()
 ///   .fu3()
 ///   .program(&mut timer_two)
 ///   .unwrap()
