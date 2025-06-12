@@ -52,7 +52,10 @@ where
 {
     /// Create a new builder in programming mode. The serial port
     /// MUST be set to 9600 BPS to be able to communicate with the
-    /// on-board microcontroller, in order to program properly
+    /// on-board microcontroller, in order to program properly.
+    ///
+    /// For most HALs, this is an infallible operation, as setting a pin
+    /// is a default item.
     pub fn new(
         device: Device,
         programming_pin: Pin,
@@ -93,9 +96,8 @@ impl<Device, Pin, Mode, Speed> HC12<Device, Pin, Mode, Speed> {
         s
     }
 
-    /// Set the mode. Factory default is `Fu3`. The mode must be allowed for the
-    /// currently set speed. E.g. setting `Fu3` for a speed of `B115200` is allowed,
-    /// but setting the mode to `Fu4` would not be.
+    /// Set the mode. Factory default is `Fu3`.
+    #[deprecated = "Awkward to use. See `fu3()`, `fu4()`, rather."]
     pub fn mode<NewMode>(self, mode: NewMode) -> HC12<Device, Pin, NewMode, Speed>
     where
         Speed: ValidSpeed,
@@ -111,7 +113,86 @@ impl<Device, Pin, Mode, Speed> HC12<Device, Pin, Mode, Speed> {
         }
     }
 
+    /// Program into Fu1 mode.
+    ///
+    /// Fu1 is a moderate power-saving mode, with an idle current of ~3.5mA.
+    /// Fu1 supports all speeds, but the in-air baudrate remains 250000 bps
+    pub fn fu1(self) -> HC12<Device, Pin, Fu1, Speed>
+    where
+        Speed: ValidSpeed,
+        Fu1: ValidModeFor<Speed>,
+    {
+        HC12 {
+            device: self.device,
+            programming_pin: self.programming_pin,
+            mode: Fu1::default(),
+            speed: self.speed,
+            channel: self.channel,
+            power: self.power,
+        }
+    }
+
+    /// Fu2 is the extreme power-saving mode of the HC-12. This mode only
+    /// supports B1200, B2400, and B4800 only. The in-air baudrate is a uniform 250000 bps.
+    /// It is reccomended to send packets over this mode at a frequency not exceeding 1Hz.
+    pub fn fu2(self) -> HC12<Device, Pin, Fu2, Speed>
+    where
+        Speed: ValidSpeed,
+        Fu2: ValidModeFor<Speed>,
+    {
+        HC12 {
+            device: self.device,
+            programming_pin: self.programming_pin,
+            mode: Fu2::default(),
+            speed: self.speed,
+            channel: self.channel,
+            power: self.power,
+        }
+    }
+
+    /// Fu3 is the premier full-speed mode of the radio module. It accepts any speed, and will
+    /// adjust the in-air speed to the speed of the local serial speed. The higher the speed
+    /// the lower the sensitivity, and thus, the range. This is the default factory  mode of the
+    /// device.
+    pub fn fu3(self) -> HC12<Device, Pin, Fu3, Speed>
+    where
+        Speed: ValidSpeed,
+        Fu3: ValidModeFor<Speed>,
+    {
+        HC12 {
+            device: self.device,
+            programming_pin: self.programming_pin,
+            mode: Fu3::default(),
+            speed: self.speed,
+            channel: self.channel,
+            power: self.power,
+        }
+    }
+
+    /// Fu4 mode is the long range mode of the device, and can achive communication distances of up
+    /// to 1.8km. Only 1200 bps is supported. In the air the baud rate will be redueced to a
+    /// whopping 500bps.
+    ///
+    /// Usage notes:
+    /// - Avoid transmitting more than 60 bytes in a packet
+    /// - Transmit a packet not more than once every two seconds.
+    pub fn fu4(self) -> HC12<Device, Pin, Fu4, Speed>
+    where
+        Speed: ValidSpeed,
+        Fu4: ValidModeFor<Speed>,
+    {
+        HC12 {
+            device: self.device,
+            programming_pin: self.programming_pin,
+            mode: Fu4::default(),
+            speed: self.speed,
+            channel: self.channel,
+            power: self.power,
+        }
+    }
+
     /// Set the speed. The speed must be valid for the current mode.
+    #[deprecated = "Use `b1200()`, `b9600`, ect., instead."]
     pub fn speed<NewSpeed>(self, speed: NewSpeed) -> HC12<Device, Pin, Mode, NewSpeed>
     where
         NewSpeed: ValidSpeed,
@@ -122,6 +203,126 @@ impl<Device, Pin, Mode, Speed> HC12<Device, Pin, Mode, Speed> {
             programming_pin: self.programming_pin,
             mode: self.mode,
             speed,
+            channel: self.channel,
+            power: self.power,
+        }
+    }
+
+    /// Program into 1200 bps.
+    pub fn b1200(self) -> HC12<Device, Pin, Mode, B1200>
+    where
+        Mode: ValidModeFor<B1200>,
+    {
+        HC12 {
+            device: self.device,
+            programming_pin: self.programming_pin,
+            mode: self.mode,
+            speed: B1200::default(),
+            channel: self.channel,
+            power: self.power,
+        }
+    }
+
+    /// Program into 2400 bps.
+    pub fn b2400(self) -> HC12<Device, Pin, Mode, B2400>
+    where
+        Mode: ValidModeFor<B2400>,
+    {
+        HC12 {
+            device: self.device,
+            programming_pin: self.programming_pin,
+            mode: self.mode,
+            speed: B2400::default(),
+            channel: self.channel,
+            power: self.power,
+        }
+    }
+
+    /// Program into 4800 bps.
+    pub fn b4800(self) -> HC12<Device, Pin, Mode, B4800>
+    where
+        Mode: ValidModeFor<B4800>,
+    {
+        HC12 {
+            device: self.device,
+            programming_pin: self.programming_pin,
+            mode: self.mode,
+            speed: B4800::default(),
+            channel: self.channel,
+            power: self.power,
+        }
+    }
+
+    /// Program into 9600 bps.
+    pub fn b9600(self) -> HC12<Device, Pin, Mode, B9600>
+    where
+        Mode: ValidModeFor<B9600>,
+    {
+        HC12 {
+            device: self.device,
+            programming_pin: self.programming_pin,
+            mode: self.mode,
+            speed: B9600::default(),
+            channel: self.channel,
+            power: self.power,
+        }
+    }
+
+    /// Program into 19200 bps.
+    pub fn b19200(self) -> HC12<Device, Pin, Mode, B19200>
+    where
+        Mode: ValidModeFor<B19200>,
+    {
+        HC12 {
+            device: self.device,
+            programming_pin: self.programming_pin,
+            mode: self.mode,
+            speed: B19200::default(),
+            channel: self.channel,
+            power: self.power,
+        }
+    }
+
+    /// Program into 39400 bps.
+    pub fn b39400(self) -> HC12<Device, Pin, Mode, B39400>
+    where
+        Mode: ValidModeFor<B39400>,
+    {
+        HC12 {
+            device: self.device,
+            programming_pin: self.programming_pin,
+            mode: self.mode,
+            speed: B39400::default(),
+            channel: self.channel,
+            power: self.power,
+        }
+    }
+
+    /// Program into 57600 bps.
+    pub fn b57600(self) -> HC12<Device, Pin, Mode, B57600>
+    where
+        Mode: ValidModeFor<B57600>,
+    {
+        HC12 {
+            device: self.device,
+            programming_pin: self.programming_pin,
+            mode: self.mode,
+            speed: B57600::default(),
+            channel: self.channel,
+            power: self.power,
+        }
+    }
+
+    /// Program into 115200 bps.
+    pub fn b115200(self) -> HC12<Device, Pin, Mode, B115200>
+    where
+        Mode: ValidModeFor<B115200>,
+    {
+        HC12 {
+            device: self.device,
+            programming_pin: self.programming_pin,
+            mode: self.mode,
+            speed: B115200::default(),
             channel: self.channel,
             power: self.power,
         }
@@ -142,6 +343,14 @@ where
         run_command(&mut self.device, self.power, delay)?;
         run_command(&mut self.device, self.channel, delay)
     }
+
+    /// Return the HC-12 to transparent mode. For most HALs, this is
+    /// infallible, as it only relies on setting a pin high or low
+    pub fn into_transparent_mode(mut self) -> Result<ProgrammedHC12<Device, Pin>, Pin::Error> {
+        self.programming_pin.set_high()?;
+
+        Ok(ProgrammedHC12::new(self.device, self.programming_pin))
+    }
 }
 
 /// A programmed HC-12 device. This can be used directly as a serial device,
@@ -157,14 +366,8 @@ where
     Device: ErrorType,
     Pin: OutputPin,
 {
-    pub(crate) fn new(device: Device, pin: Pin) -> Result<Self, Error<Pin::Error>> {
-        let mut pin = pin;
-        let res = pin.set_high();
-
-        match res {
-            Ok(()) => Ok(Self { device, pin }),
-            Err(e) => Err(Error::DeviceError(e)),
-        }
+    pub(crate) fn new(device: Device, pin: Pin) -> Self {
+        Self { device, pin }
     }
 
     /// Decompose the device to its serial port and programming pin
