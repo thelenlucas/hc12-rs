@@ -1,4 +1,4 @@
-#![no_std]
+#![cfg_attr(not(test), no_std)]
 
 mod commands;
 pub mod error;
@@ -18,9 +18,9 @@ use speeds::*;
 /// An HC-12 device programmer
 ///
 /// # Example
-/// ```
+/// ```ignore
 /// let serial = hal::serial;
-/// let programming_pin = hal::gpio:Gpio1;
+/// let programming_pin = hal::gpio::Gpio1;
 /// let delay = hal::delay::Timer;
 ///
 /// let hc12 = HC12::new(serial, programming_pin, &mut delay)
@@ -57,14 +57,14 @@ where
         device: Device,
         programming_pin: Pin,
         delay: &mut impl DelayNs,
-    ) -> Result<Self, Error<Device::Error, Pin::Error>>
+    ) -> Result<Self, Error<Pin::Error>>
     where
         <Pin as embedded_hal::digital::ErrorType>::Error: embedded_io::Error,
     {
         let mut programming_pin = programming_pin;
         delay.delay_ms(40);
         if let Err(e) = programming_pin.set_low() {
-            return Err(Error::PinError(e));
+            return Err(Error::DeviceError(e));
         }
         Ok(Self {
             device,
@@ -136,18 +136,11 @@ where
     Speed: ValidSpeed,
 {
     /// Program the HC12
-    pub fn program(
-        mut self,
-        delay: &mut impl DelayNs,
-    ) -> Result<ProgrammedHC12<Device, Pin>, Error<Device::Error, Pin::Error>> {
-        run_command::<Device, Pin>(&mut self.device, Speed::default(), delay)?;
-        run_command::<Device, Pin>(&mut self.device, Mode::default(), delay)?;
-        run_command::<Device, Pin>(&mut self.device, self.power, delay)?;
-        run_command::<Device, Pin>(&mut self.device, self.channel, delay)?;
-
-        delay.delay_ms(80);
-
-        ProgrammedHC12::new(self.device, self.programming_pin)
+    pub fn program(mut self, delay: &mut impl DelayNs) -> Result<(), Error<Device::Error>> {
+        run_command(&mut self.device, Speed::default(), delay)?;
+        run_command(&mut self.device, Mode::default(), delay)?;
+        run_command(&mut self.device, self.power, delay)?;
+        run_command(&mut self.device, self.channel, delay)
     }
 }
 
@@ -164,13 +157,13 @@ where
     Device: ErrorType,
     Pin: OutputPin,
 {
-    pub(crate) fn new(device: Device, pin: Pin) -> Result<Self, Error<Device::Error, Pin::Error>> {
+    pub(crate) fn new(device: Device, pin: Pin) -> Result<Self, Error<Pin::Error>> {
         let mut pin = pin;
         let res = pin.set_high();
 
         match res {
             Ok(()) => Ok(Self { device, pin }),
-            Err(e) => Err(Error::PinError(e)),
+            Err(e) => Err(Error::DeviceError(e)),
         }
     }
 
@@ -185,7 +178,7 @@ where
     pub fn at_mode(
         self,
         delay: &mut impl DelayNs,
-    ) -> Result<HC12<Device, Pin, Fu3, B9600>, Error<Device::Error, Pin::Error>>
+    ) -> Result<HC12<Device, Pin, Fu3, B9600>, Error<Pin::Error>>
     where
         Device: Read + ReadReady + Write,
         <Pin as embedded_hal::digital::ErrorType>::Error: embedded_io::Error,

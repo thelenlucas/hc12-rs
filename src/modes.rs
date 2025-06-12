@@ -56,3 +56,16 @@ impl ValidModeFor<B2400> for Fu2 {}
 impl ValidModeFor<B4800> for Fu2 {}
 
 impl ValidModeFor<B1200> for Fu4 {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn mode_commands_are_correct() {
+        assert_eq!(Fu1::default().command().as_str(), "AT+FU1");
+        assert_eq!(Fu2::default().command().as_str(), "AT+FU2");
+        assert_eq!(Fu3::default().command().as_str(), "AT+FU3");
+        assert_eq!(Fu4::default().command().as_str(), "AT+FU4");
+    }
+}

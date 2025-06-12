@@ -97,3 +97,56 @@ impl Command for Power {
         s
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn channel_new_valid() {
+        assert!(Channel::new(1).is_ok());
+        assert!(Channel::new(127).is_ok());
+    }
+
+    #[test]
+    fn channel_new_invalid() {
+        assert!(Channel::new(0).is_err());
+        assert!(Channel::new(128).is_err());
+    }
+
+    #[test]
+    fn channel_default_is_1() {
+        let default: Channel = Channel::default();
+        assert_eq!(u8::from(default), 1);
+    }
+
+    #[test]
+    fn channel_command_format() {
+        let ch = Channel::new(5).unwrap();
+        // zero-padded three-digit decimal
+        assert_eq!(ch.command().as_str(), "AT+C005");
+    }
+
+    #[test]
+    fn channel_mhz_calculation() {
+        let ch = Channel::new(10).unwrap();
+        let expected = 433_000.0 + 400.0 * 10.0;
+        assert_eq!(ch.mhz(), expected);
+    }
+
+    #[test]
+    fn channel_try_from() {
+        assert!(Channel::try_from(127).is_ok());
+        assert!(Channel::try_from(200).is_err());
+    }
+
+    // ---
+
+    #[test]
+    fn power_variants_and_default() {
+        // Explicit variant
+        assert_eq!(Power::P3.command().as_str(), "AT+P3");
+        // Default is P8
+        assert_eq!(Power::default().command().as_str(), "AT+P8");
+    }
+}

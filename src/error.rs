@@ -1,29 +1,29 @@
+use core::fmt::Debug;
+
 use heapless::String;
 
 use crate::paramaters::BadChannel;
 
 /// An error in creating a device, for some internal or an underlying issue
 #[derive(Debug)]
-pub enum Error<D: core::fmt::Debug, E: core::fmt::Debug> {
+pub enum Error<D: Debug> {
     /// Underlying device error
-    SerialDevice(D),
-    /// Underling pin error
-    PinError(E),
+    DeviceError(D),
     /// An invalid channel was selected
     BadChannel(u8),
     /// No response was recieved
     NoResponse,
     /// A non-ok response was recieved
-    NoOk(String<16>),
+    NoOK(String<16>),
 }
 
-impl<D: embedded_io::Error, E: core::fmt::Debug> From<D> for Error<D, E> {
+impl<D: embedded_io::Error> From<D> for Error<D> {
     fn from(value: D) -> Self {
-        Error::SerialDevice(value)
+        Error::DeviceError(value)
     }
 }
 
-impl<D: core::fmt::Debug, E: core::fmt::Debug> From<BadChannel> for Error<D, E> {
+impl<D: core::fmt::Debug> From<BadChannel> for Error<D> {
     fn from(value: BadChannel) -> Self {
         Self::BadChannel(value.into())
     }
