@@ -6,6 +6,8 @@ pub mod modes;
 pub mod paramaters;
 pub mod speeds;
 
+use core::marker::PhantomData;
+
 use commands::run_command;
 use embedded_hal::{delay::DelayNs, digital::OutputPin};
 use embedded_io::{ErrorType, Read, ReadReady, Write, WriteReady};
@@ -23,7 +25,7 @@ use speeds::*;
 /// let programming_pin = hal::gpio::Gpio1;
 /// let delay = hal::delay::Timer;
 ///
-/// let hc12 = HC12::new(serial, programming_pin, &mut delay)
+/// let hc12 = HC12::factory_settings(serial, programming_pin, &mut delay)
 ///   .unwrap()
 ///   .speed(B9600::default())
 ///   .channel(Channel::new(15).unwrap())
@@ -39,8 +41,11 @@ use speeds::*;
 pub struct HC12<Device, Pin, Mode, Speed> {
     device: Device,
     programming_pin: Pin,
-    mode: Mode,
-    speed: Speed,
+
+    // zero-sized markers
+    _mode: PhantomData<Mode>,
+    _speed: PhantomData<Speed>,
+
     channel: Channel,
     power: Power,
 }
@@ -56,24 +61,22 @@ where
     ///
     /// For most HALs, this is an infallible operation, as setting a pin
     /// is a default item.
-    pub fn new(
+    ///
+    /// This function will block for not less than 40ms.
+    pub fn factor_settings(
         device: Device,
-        programming_pin: Pin,
+        mut programming_pin: Pin,
         delay: &mut impl DelayNs,
-    ) -> Result<Self, Error<Pin::Error>>
-    where
-        <Pin as embedded_hal::digital::ErrorType>::Error: embedded_io::Error,
-    {
-        let mut programming_pin = programming_pin;
+    ) -> Result<Self, Error<Pin::Error>> {
+        // enter AT (programming) mode
+        programming_pin.set_low().map_err(Error::DeviceError)?;
         delay.delay_ms(40);
-        if let Err(e) = programming_pin.set_low() {
-            return Err(Error::DeviceError(e));
-        }
-        Ok(Self {
+
+        Ok(HC12 {
             device,
             programming_pin,
-            mode: Fu3::default(),
-            speed: B9600::default(),
+            _mode: PhantomData,
+            _speed: PhantomData,
             channel: Channel::default(),
             power: Power::default(),
         })
@@ -84,33 +87,12 @@ impl<Device, Pin, Mode, Speed> HC12<Device, Pin, Mode, Speed> {
     /// Set the power of the module. The default power is the maxumum
     /// of P8
     pub fn power(self, power: Power) -> Self {
-        let mut s = self;
-        s.power = power;
-        s
+        HC12 { power, ..self }
     }
 
     /// Set the channel. The module by default is set to Channel 0
     pub fn channel(self, channel: Channel) -> Self {
-        let mut s = self;
-        s.channel = channel;
-        s
-    }
-
-    /// Set the mode. Factory default is `Fu3`.
-    #[deprecated = "Awkward to use. See `fu3()`, `fu4()`, rather."]
-    pub fn mode<NewMode>(self, mode: NewMode) -> HC12<Device, Pin, NewMode, Speed>
-    where
-        Speed: ValidSpeed,
-        NewMode: ValidModeFor<Speed>,
-    {
-        HC12::<Device, Pin, NewMode, Speed> {
-            device: self.device,
-            programming_pin: self.programming_pin,
-            mode,
-            speed: self.speed,
-            channel: self.channel,
-            power: self.power,
-        }
+        HC12 { channel, ..self }
     }
 
     /// Program into Fu1 mode.
@@ -120,13 +102,13 @@ impl<Device, Pin, Mode, Speed> HC12<Device, Pin, Mode, Speed> {
     pub fn fu1(self) -> HC12<Device, Pin, Fu1, Speed>
     where
         Speed: ValidSpeed,
-        Fu1: ValidModeFor<Speed>,
+        Fu1: ValidModeFor<Speed> + Default,
     {
         HC12 {
             device: self.device,
             programming_pin: self.programming_pin,
-            mode: Fu1::default(),
-            speed: self.speed,
+            _mode: PhantomData,
+            _speed: self._speed,
             channel: self.channel,
             power: self.power,
         }
@@ -138,13 +120,13 @@ impl<Device, Pin, Mode, Speed> HC12<Device, Pin, Mode, Speed> {
     pub fn fu2(self) -> HC12<Device, Pin, Fu2, Speed>
     where
         Speed: ValidSpeed,
-        Fu2: ValidModeFor<Speed>,
+        Fu3: ValidModeFor<Speed> + Default,
     {
         HC12 {
             device: self.device,
             programming_pin: self.programming_pin,
-            mode: Fu2::default(),
-            speed: self.speed,
+            _mode: PhantomData,
+            _speed: self._speed,
             channel: self.channel,
             power: self.power,
         }
@@ -157,13 +139,13 @@ impl<Device, Pin, Mode, Speed> HC12<Device, Pin, Mode, Speed> {
     pub fn fu3(self) -> HC12<Device, Pin, Fu3, Speed>
     where
         Speed: ValidSpeed,
-        Fu3: ValidModeFor<Speed>,
+        Fu3: ValidModeFor<Speed> + Default,
     {
         HC12 {
             device: self.device,
             programming_pin: self.programming_pin,
-            mode: Fu3::default(),
-            speed: self.speed,
+            _mode: PhantomData,
+            _speed: self._speed,
             channel: self.channel,
             power: self.power,
         }
@@ -179,30 +161,13 @@ impl<Device, Pin, Mode, Speed> HC12<Device, Pin, Mode, Speed> {
     pub fn fu4(self) -> HC12<Device, Pin, Fu4, Speed>
     where
         Speed: ValidSpeed,
-        Fu4: ValidModeFor<Speed>,
+        Fu4: ValidModeFor<Speed> + Default,
     {
         HC12 {
             device: self.device,
             programming_pin: self.programming_pin,
-            mode: Fu4::default(),
-            speed: self.speed,
-            channel: self.channel,
-            power: self.power,
-        }
-    }
-
-    /// Set the speed. The speed must be valid for the current mode.
-    #[deprecated = "Use `b1200()`, `b9600`, ect., instead."]
-    pub fn speed<NewSpeed>(self, speed: NewSpeed) -> HC12<Device, Pin, Mode, NewSpeed>
-    where
-        NewSpeed: ValidSpeed,
-        Mode: ValidModeFor<NewSpeed>,
-    {
-        HC12::<Device, Pin, Mode, NewSpeed> {
-            device: self.device,
-            programming_pin: self.programming_pin,
-            mode: self.mode,
-            speed,
+            _mode: PhantomData,
+            _speed: self._speed,
             channel: self.channel,
             power: self.power,
         }
@@ -211,13 +176,14 @@ impl<Device, Pin, Mode, Speed> HC12<Device, Pin, Mode, Speed> {
     /// Program into 1200 bps.
     pub fn b1200(self) -> HC12<Device, Pin, Mode, B1200>
     where
-        Mode: ValidModeFor<B1200>,
+        Mode: ValidModeFor<B1200> + Default,
+        B1200: ValidSpeed + Default,
     {
         HC12 {
             device: self.device,
             programming_pin: self.programming_pin,
-            mode: self.mode,
-            speed: B1200::default(),
+            _mode: self._mode,
+            _speed: PhantomData,
             channel: self.channel,
             power: self.power,
         }
@@ -231,8 +197,8 @@ impl<Device, Pin, Mode, Speed> HC12<Device, Pin, Mode, Speed> {
         HC12 {
             device: self.device,
             programming_pin: self.programming_pin,
-            mode: self.mode,
-            speed: B2400::default(),
+            _mode: self._mode,
+            _speed: PhantomData,
             channel: self.channel,
             power: self.power,
         }
@@ -246,8 +212,8 @@ impl<Device, Pin, Mode, Speed> HC12<Device, Pin, Mode, Speed> {
         HC12 {
             device: self.device,
             programming_pin: self.programming_pin,
-            mode: self.mode,
-            speed: B4800::default(),
+            _mode: self._mode,
+            _speed: PhantomData,
             channel: self.channel,
             power: self.power,
         }
@@ -261,8 +227,8 @@ impl<Device, Pin, Mode, Speed> HC12<Device, Pin, Mode, Speed> {
         HC12 {
             device: self.device,
             programming_pin: self.programming_pin,
-            mode: self.mode,
-            speed: B9600::default(),
+            _mode: self._mode,
+            _speed: PhantomData,
             channel: self.channel,
             power: self.power,
         }
@@ -276,8 +242,8 @@ impl<Device, Pin, Mode, Speed> HC12<Device, Pin, Mode, Speed> {
         HC12 {
             device: self.device,
             programming_pin: self.programming_pin,
-            mode: self.mode,
-            speed: B19200::default(),
+            _mode: self._mode,
+            _speed: PhantomData,
             channel: self.channel,
             power: self.power,
         }
@@ -291,8 +257,8 @@ impl<Device, Pin, Mode, Speed> HC12<Device, Pin, Mode, Speed> {
         HC12 {
             device: self.device,
             programming_pin: self.programming_pin,
-            mode: self.mode,
-            speed: B39400::default(),
+            _mode: self._mode,
+            _speed: PhantomData,
             channel: self.channel,
             power: self.power,
         }
@@ -306,8 +272,8 @@ impl<Device, Pin, Mode, Speed> HC12<Device, Pin, Mode, Speed> {
         HC12 {
             device: self.device,
             programming_pin: self.programming_pin,
-            mode: self.mode,
-            speed: B57600::default(),
+            _mode: self._mode,
+            _speed: PhantomData,
             channel: self.channel,
             power: self.power,
         }
@@ -321,8 +287,8 @@ impl<Device, Pin, Mode, Speed> HC12<Device, Pin, Mode, Speed> {
         HC12 {
             device: self.device,
             programming_pin: self.programming_pin,
-            mode: self.mode,
-            speed: B115200::default(),
+            _mode: self._mode,
+            _speed: PhantomData,
             channel: self.channel,
             power: self.power,
         }
@@ -345,29 +311,60 @@ where
     }
 
     /// Return the HC-12 to transparent mode. For most HALs, this is
-    /// infallible, as it only relies on setting a pin high or low
-    pub fn into_transparent_mode(mut self) -> Result<ProgrammedHC12<Device, Pin>, Pin::Error> {
+    /// infallible, as it only relies on setting a pin high or low.
+    /// This function will block for not less than 80ms.
+    pub fn into_transparent_mode(
+        mut self,
+        delay: &mut impl DelayNs,
+    ) -> Result<TransparentHC12<Device, Pin, Mode, Speed>, Pin::Error> {
         self.programming_pin.set_high()?;
+        delay.delay_ms(80);
 
-        Ok(ProgrammedHC12::new(self.device, self.programming_pin))
+        Ok(TransparentHC12::new(
+            self.device,
+            self.programming_pin,
+            self.channel,
+            self.power,
+        ))
     }
 }
 
-/// A programmed HC-12 device. This can be used directly as a serial device,
+/// A transparent HC-12 device. This can be used directly as a serial device,
 /// or returned to AT (programming) mode, or decomposed to return the pin and the
 /// serial device used in programming the module
-pub struct ProgrammedHC12<Device, Pin> {
+pub struct TransparentHC12<Device, Pin, Mode, Speed> {
     device: Device,
     pin: Pin,
+    mode: PhantomData<Mode>,
+    speed: PhantomData<Speed>,
+    channel: Channel,
+    power: Power,
 }
 
-impl<Device, Pin> ProgrammedHC12<Device, Pin>
+impl<Device, Pin, Mode, Speed> TransparentHC12<Device, Pin, Mode, Speed>
 where
     Device: ErrorType,
     Pin: OutputPin,
 {
-    pub(crate) fn new(device: Device, pin: Pin) -> Self {
-        Self { device, pin }
+    pub(crate) fn new(device: Device, pin: Pin, channel: Channel, power: Power) -> Self {
+        Self {
+            device,
+            pin,
+            channel,
+            power,
+            speed: PhantomData,
+            mode: PhantomData,
+        }
+    }
+
+    /// Get the current programmed channel
+    pub fn channel(&self) -> &Channel {
+        &self.channel
+    }
+
+    /// The current programmed power
+    pub fn power(&self) -> &Power {
+        &self.power
     }
 
     /// Decompose the device to its serial port and programming pin
@@ -375,29 +372,38 @@ where
         (self.device, self.pin)
     }
 
-    /// Return to programming mode. This is stateless, and the last set parameters are not
-    /// persistent, but will be on the device.
-    #[allow(clippy::type_complexity)]
+    /// Return to programming mode. This persists the programming parameters from the last
+    /// probramming of the device. In most HALs this is infallible.
     pub fn at_mode(
-        self,
+        mut self,
         delay: &mut impl DelayNs,
-    ) -> Result<HC12<Device, Pin, Fu3, B9600>, Error<Pin::Error>>
+    ) -> Result<HC12<Device, Pin, Mode, Speed>, Error<Pin::Error>>
     where
-        Device: Read + ReadReady + Write,
-        <Pin as embedded_hal::digital::ErrorType>::Error: embedded_io::Error,
+        Device: Read + Write,
+        Pin: OutputPin,
     {
-        HC12::new(self.device, self.pin, delay)
+        self.pin.set_low().map_err(Error::DeviceError)?;
+        delay.delay_ms(40);
+
+        Ok(HC12 {
+            device: self.device,
+            programming_pin: self.pin,
+            _mode: PhantomData,
+            _speed: PhantomData,
+            channel: self.channel,
+            power: self.power,
+        })
     }
 }
 
-impl<Device, Pin> ErrorType for ProgrammedHC12<Device, Pin>
+impl<Device, Pin, Mode, Speed> ErrorType for TransparentHC12<Device, Pin, Mode, Speed>
 where
     Device: ErrorType,
 {
     type Error = Device::Error;
 }
 
-impl<Device, Pin> Read for ProgrammedHC12<Device, Pin>
+impl<Device, Pin, Mode, Speed> Read for TransparentHC12<Device, Pin, Mode, Speed>
 where
     Device: Read,
 {
@@ -406,7 +412,7 @@ where
     }
 }
 
-impl<Device, Pin> ReadReady for ProgrammedHC12<Device, Pin>
+impl<Device, Pin, Mode, Speed> ReadReady for TransparentHC12<Device, Pin, Mode, Speed>
 where
     Device: ReadReady,
 {
@@ -415,7 +421,7 @@ where
     }
 }
 
-impl<Device, Pin> Write for ProgrammedHC12<Device, Pin>
+impl<Device, Pin, Mode, Speed> Write for TransparentHC12<Device, Pin, Mode, Speed>
 where
     Device: Write,
 {
@@ -428,7 +434,7 @@ where
     }
 }
 
-impl<Device, Pin> WriteReady for ProgrammedHC12<Device, Pin>
+impl<Device, Pin, Mode, Speed> WriteReady for TransparentHC12<Device, Pin, Mode, Speed>
 where
     Device: WriteReady,
 {

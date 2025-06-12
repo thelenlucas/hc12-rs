@@ -57,7 +57,12 @@ impl Channel {
 
     /// Get the frequency of the channel, in  MHz
     pub fn mhz(&self) -> f32 {
-        433_000.0 + 400.0 * self.0 as f32
+        433_000.0 + 400.0 * self.0 as f32 / 1000.0
+    }
+
+    /// Get the frequency of the channel, in KHz
+    pub fn khz(&self) -> u32 {
+        433_000 + 400 * self.0 as u32
     }
 }
 
