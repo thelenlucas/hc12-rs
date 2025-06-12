@@ -103,6 +103,22 @@ impl Command for Power {
     }
 }
 
+impl Power {
+    /// Power of the modules in dBm
+    pub fn power_decible_milliwatts(&self) -> i8 {
+        match self {
+            Power::P1 => -1,
+            Power::P2 => 2,
+            Power::P3 => 5,
+            Power::P4 => 8,
+            Power::P5 => 11,
+            Power::P6 => 14,
+            Power::P7 => 17,
+            Power::P8 => 20,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -144,8 +160,6 @@ mod tests {
         assert!(Channel::try_from(127).is_ok());
         assert!(Channel::try_from(200).is_err());
     }
-
-    // ---
 
     #[test]
     fn power_variants_and_default() {

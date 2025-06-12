@@ -33,6 +33,17 @@ fn send_command<D: Write>(
 
 fn recieve_command<D: Read>(device: &mut D) -> Result<(), Error<D::Error>> {
     let mut buffer = [0u8; 16];
+    let mut pointer = 0;
+
+    while let Ok(bytes) = device.read(&mut buffer[pointer..]) {
+        if bytes == 0 {
+            break;
+        }
+        pointer += bytes;
+
+        if buffer.contains(&b'\n') {}
+    }
+
     device.read(&mut buffer)?;
     let s = from_utf8(&buffer).unwrap();
     if s.contains("OK") {
