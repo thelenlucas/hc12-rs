@@ -6,6 +6,7 @@ use crate::paramaters::BadChannel;
 
 /// An error in creating a device, for some internal or an underlying issue
 #[derive(Debug)]
+#[cfg_attr(feature = "defmt-03", derive(defmt::Format))]
 pub enum Error<D: Debug> {
     /// Underlying device error
     DeviceError(D),

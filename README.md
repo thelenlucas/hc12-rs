@@ -13,7 +13,7 @@ devices manually every time.
 
 The best-translated English manual for the module can be found [here](https://github.com/robert-rozee/HC-12-user-manual---reformatted/blob/master/HC-12%20v2.3C.pdf).
 
-## Features
+## Capabilities
 
 - Re/Program `HC-12` modules dynamically with error handling
 - Statically typed builder prevents invalid states
@@ -46,8 +46,12 @@ let mut hc12_low_power = hc12.into_programming_mode()
 hc12_low_power.write_all(b"Hello from the low power mode!").ok();
 ```
 
+## Feature Flags
+
+- `defmt-03`: Support for [defmt](https://crates.io/crates/defmt) logging macros
+
 ## To-Dos
 
 - Interrogation of underlying module parameters
 - Unsafe no-assumptions interface
-- Async feature
+- Async feature flags
