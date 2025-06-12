@@ -17,26 +17,37 @@ The best-translated English manual for the module can be found [here](https://gi
 
 - Re/Program `HC-12` modules dynamically with error handling
 - Statically typed builder prevents invalid states
-- Use any [embedded-hal](https://crates.io/crates/embedded-hal)-capable board
+- Use any [embedded-hal](https://crates.io/crates/embedded-hal)/[embedded-io](https://crates.io/crates/embedded-io)-capable board
 - `no-std` and `no-alloc` capable
 
 ## Usage
 
 ```rust
-let serial = hal::serial;
-let programming_pin = hal::gpio:Gpio1;
-let delay = hal::delay::Timer;
 
-let hc12 = HC12::new(serial, programming_pin, &mut delay)
+let mut hc12 = HC12::new(serial, programming_pin, &mut delay)
   .unwrap()
-  .speed(B9600::default())
   .channel(Channel::new(15).unwrap())
   .power(Power::P8)
-  .mode(Fu3::default())
+  .b4800
+  .fu3()
   .program(&mut timer_two)
   .unwrap()
-  .at_mode()
+  .into_transparent_mode()
   .unwrap();
 
-hc12.write_all("Hello, world!".as_bytes()).ok();
+hc12.write_all("Hello world!".as_bytes()).ok();
+
+let mut hc12_low_power = hc12.into_programming_mode()
+  .fu1()
+  .unwrap()
+  .into_transparent_mode()
+  .unwrap();
+
+hc12_low_power.write_all(b"Hello from the low power mode!").ok();
 ```
+
+## To-Dos
+
+- Interrogation of underlying module parameters
+- Unsafe no-assumptions interface
+- Async feature
