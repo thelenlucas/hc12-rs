@@ -1,4 +1,4 @@
-#![cfg_attr(not(test), no_std)]
+#![cfg_attr(not(all(test, feature = "std")), no_std)]
 
 mod commands;
 pub mod error;
