@@ -4,7 +4,7 @@ use heapless::String;
 use crate::commands::Command;
 
 /// A channel - channels between 1 and 127 are valid
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Channel(u8);
 
 /// A bad channel was attempted to be created
