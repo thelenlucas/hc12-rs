@@ -358,7 +358,12 @@ where
     Device: ErrorType,
     Pin: OutputPin,
 {
-    pub(crate) fn new(device: &'a mut Device, pin: &'a mut Pin, channel: Channel, power: Power) -> Self {
+    pub(crate) fn new(
+        device: &'a mut Device,
+        pin: &'a mut Pin,
+        channel: Channel,
+        power: Power,
+    ) -> Self {
         Self {
             device,
             pin,
