@@ -10,7 +10,6 @@
     utils.lib.eachDefaultSystem (system:
       let pkgs = import nixpkgs { inherit system; };
       in {
-        packages = { inherit jupiter-fsw; };
 
         devShell = with pkgs;
           mkShell {
