@@ -8,9 +8,7 @@
 
   outputs = { nixpkgs, utils, ... }:
     utils.lib.eachDefaultSystem (system:
-      let
-        pkgs = import nixpkgs { inherit system; };
-        jupiter-fsw = pkgs.callPackage ./jupiter-fsw/jupiter.nix { };
+      let pkgs = import nixpkgs { inherit system; };
       in {
         packages = { inherit jupiter-fsw; };
 
