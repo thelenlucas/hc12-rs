@@ -57,7 +57,7 @@ impl Channel {
 
     /// Get the frequency of the channel, in  MHz
     pub fn mhz(&self) -> f32 {
-        433_000.0 + 400.0 * self.0 as f32 / 1000.0
+        433.0 + 0.4 * self.0 as f32
     }
 
     /// Get the frequency of the channel, in KHz
@@ -151,7 +151,7 @@ mod tests {
     #[test]
     fn channel_mhz_calculation() {
         let ch = Channel::new(10).unwrap();
-        let expected = 433_000.0 + 400.0 * 10.0;
+        let expected = 433.0 + 0.4 * 10.0;
         assert_eq!(ch.mhz(), expected);
     }
 

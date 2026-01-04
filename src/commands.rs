@@ -41,11 +41,12 @@ fn recieve_command<D: Read>(device: &mut D) -> Result<(), Error<D::Error>> {
         }
         pointer += bytes;
 
-        if buffer.contains(&b'\n') {}
+        if buffer.contains(&b'\n') {
+            break;
+        }
     }
 
-    device.read(&mut buffer)?;
-    let s = from_utf8(&buffer).unwrap();
+    let s = from_utf8(&buffer[..pointer]).unwrap();
     if s.contains("OK") {
         Ok(())
     } else {
